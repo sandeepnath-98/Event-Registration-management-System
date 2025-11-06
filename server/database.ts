@@ -21,7 +21,9 @@ db.exec(`
     hasQR INTEGER DEFAULT 0,
     qrCodeData TEXT,
     status TEXT DEFAULT 'pending',
-    createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+    formId INTEGER, -- Added formId column
+    FOREIGN KEY (formId) REFERENCES event_forms(id)
   );
 
   CREATE TABLE IF NOT EXISTS scan_history (
@@ -48,26 +50,33 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_registrations_status ON registrations(status);
   CREATE INDEX IF NOT EXISTS idx_registrations_email ON registrations(email);
+  CREATE INDEX IF NOT EXISTS idx_registrations_formid ON registrations(formId); -- Added index for formId
   CREATE INDEX IF NOT EXISTS idx_scan_history_ticket ON scan_history(ticketId);
   CREATE INDEX IF NOT EXISTS idx_event_forms_published ON event_forms(isPublished);
 `);
 
 export class TicketDatabase {
+  private db: Database.Database;
+
+  constructor() {
+    this.db = db; // Use the already initialized db instance
+  }
+
   // Registration methods
-  createRegistration(data: InsertRegistration): Registration {
+  createRegistration(data: InsertRegistration, formId?: number): Registration {
     const id = `REG${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`;
-    const stmt = db.prepare(`
-      INSERT INTO registrations (id, name, email, phone, organization, groupSize)
-      VALUES (?, ?, ?, ?, ?, ?)
+    const stmt = this.db.prepare(`
+      INSERT INTO registrations (id, name, email, phone, organization, groupSize, formId)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(id, data.name, data.email, data.phone, data.organization, data.groupSize);
+    stmt.run(id, data.name, data.email, data.phone, data.organization, data.groupSize, formId !== undefined ? formId : null);
 
     return this.getRegistration(id)!;
   }
 
   getRegistration(id: string): Registration | undefined {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       SELECT 
         id,
         name,
@@ -80,7 +89,8 @@ export class TicketDatabase {
         hasQR,
         qrCodeData,
         status,
-        createdAt
+        createdAt,
+        formId
       FROM registrations
       WHERE id = ?
     `);
@@ -95,7 +105,7 @@ export class TicketDatabase {
   }
 
   getAllRegistrations(): Registration[] {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       SELECT 
         id,
         name,
@@ -108,7 +118,8 @@ export class TicketDatabase {
         hasQR,
         qrCodeData,
         status,
-        createdAt
+        createdAt,
+        formId
       FROM registrations
       ORDER BY createdAt DESC
     `);
@@ -120,8 +131,34 @@ export class TicketDatabase {
     }));
   }
 
+  getRegistrationsByFormId(formId: number): Registration[] {
+    const stmt = this.db.prepare(`
+      SELECT 
+        id,
+        name,
+        email,
+        phone,
+        organization,
+        groupSize,
+        scans,
+        maxScans,
+        hasQR,
+        qrCodeData,
+        status,
+        createdAt,
+        formId
+      FROM registrations 
+      WHERE formId = ? ORDER BY createdAt DESC
+    `);
+    const rows = stmt.all(formId) as any[];
+    return rows.map((row) => ({
+      ...row,
+      hasQR: Boolean(row.hasQR),
+    }));
+  }
+
   generateQRCode(id: string, qrCodeData: string): boolean {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       UPDATE registrations
       SET hasQR = 1, qrCodeData = ?, status = 'active'
       WHERE id = ? AND hasQR = 0
@@ -159,7 +196,7 @@ export class TicketDatabase {
     }
 
     // First scan - set status to 'checked-in'
-    const updateStmt = db.prepare(`
+    const updateStmt = this.db.prepare(`
       UPDATE registrations
       SET scans = 1,
           status = 'checked-in'
@@ -184,7 +221,7 @@ export class TicketDatabase {
   // Scan history methods
   addScanHistory(ticketId: string, valid: boolean): void {
     const id = randomUUID();
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       INSERT INTO scan_history (id, ticketId, valid)
       VALUES (?, ?, ?)
     `);
@@ -193,7 +230,7 @@ export class TicketDatabase {
   }
 
   getScanHistory(ticketId: string): ScanHistory[] {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       SELECT id, ticketId, scannedAt, valid
       FROM scan_history
       WHERE ticketId = ?
@@ -208,7 +245,7 @@ export class TicketDatabase {
   }
 
   getAllScanHistory(): ScanHistory[] {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       SELECT id, ticketId, scannedAt, valid
       FROM scan_history
       ORDER BY scannedAt DESC
@@ -223,14 +260,14 @@ export class TicketDatabase {
 
   // Delete registration
   deleteRegistration(id: string): boolean {
-    const stmt = db.prepare("DELETE FROM registrations WHERE id = ?");
+    const stmt = this.db.prepare("DELETE FROM registrations WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
 
   // Revoke QR code
   revokeQRCode(id: string): boolean {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       UPDATE registrations
       SET hasQR = 0, qrCodeData = NULL, status = 'pending', scans = 0
       WHERE id = ?
@@ -241,10 +278,10 @@ export class TicketDatabase {
 
   // Statistics
   getStats() {
-    const totalRegs = db.prepare("SELECT COUNT(*) as count FROM registrations").get() as { count: number };
-    const qrGenerated = db.prepare("SELECT COUNT(*) as count FROM registrations WHERE hasQR = 1").get() as { count: number };
-    const totalScans = db.prepare("SELECT SUM(scans) as total FROM registrations").get() as { total: number | null };
-    const activeRegs = db.prepare("SELECT COUNT(*) as count FROM registrations WHERE status = 'active'").get() as { count: number };
+    const totalRegs = this.db.prepare("SELECT COUNT(*) as count FROM registrations").get() as { count: number };
+    const qrGenerated = this.db.prepare("SELECT COUNT(*) as count FROM registrations WHERE hasQR = 1").get() as { count: number };
+    const totalScans = this.db.prepare("SELECT SUM(scans) as total FROM registrations").get() as { total: number | null };
+    const activeRegs = this.db.prepare("SELECT COUNT(*) as count FROM registrations WHERE status = 'checked-in'").get() as { count: number };
 
     return {
       totalRegistrations: totalRegs.count,
@@ -264,7 +301,7 @@ export class TicketDatabase {
     customLinks?: Array<{ label: string; url: string }>;
     description?: string;
   }) {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       INSERT INTO event_forms (title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
@@ -283,7 +320,7 @@ export class TicketDatabase {
   }
 
   getEventForm(id: number) {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
       FROM event_forms
       WHERE id = ?
@@ -300,7 +337,7 @@ export class TicketDatabase {
   }
 
   getPublishedForm() {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
       FROM event_forms
       WHERE isPublished = 1
@@ -319,7 +356,7 @@ export class TicketDatabase {
   }
 
   getAllEventForms() {
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
       FROM event_forms
       ORDER BY updatedAt DESC
@@ -379,7 +416,7 @@ export class TicketDatabase {
     updates.push("updatedAt = CURRENT_TIMESTAMP");
     values.push(id);
 
-    const stmt = db.prepare(`
+    const stmt = this.db.prepare(`
       UPDATE event_forms
       SET ${updates.join(", ")}
       WHERE id = ?
@@ -391,22 +428,22 @@ export class TicketDatabase {
 
   publishEventForm(id: number) {
     // Unpublish all other forms first
-    db.prepare("UPDATE event_forms SET isPublished = 0").run();
+    this.db.prepare("UPDATE event_forms SET isPublished = 0").run();
 
     // Publish this form
-    const stmt = db.prepare("UPDATE event_forms SET isPublished = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ?");
+    const stmt = this.db.prepare("UPDATE event_forms SET isPublished = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
 
   unpublishEventForm(id: number) {
-    const stmt = db.prepare("UPDATE event_forms SET isPublished = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = ?");
+    const stmt = this.db.prepare("UPDATE event_forms SET isPublished = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
 
   deleteEventForm(id: number) {
-    const stmt = db.prepare("DELETE FROM event_forms WHERE id = ?");
+    const stmt = this.db.prepare("DELETE FROM event_forms WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
   }
