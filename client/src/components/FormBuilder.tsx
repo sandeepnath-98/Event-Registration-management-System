@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Loader2, Plus, Trash2, Eye, Globe, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
+import { Upload, Loader2, Plus, Trash2, Eye, Globe, Image as ImageIcon, Link as LinkIcon, Type, Video, List, GripVertical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { EventForm, CustomField, BaseFieldConfig } from "@shared/schema";
@@ -54,10 +54,29 @@ interface FormBuilderProps {
   onSuccess?: () => void;
 }
 
+// Toolbar element types
+type ToolbarElement = {
+  type: 'text' | 'email' | 'phone' | 'textarea' | 'url' | 'photo' | 'video' | 'image';
+  icon: React.ReactNode;
+  label: string;
+};
+
+const toolbarElements: ToolbarElement[] = [
+  { type: 'text', icon: <Type className="h-5 w-5" />, label: 'Text Field' },
+  { type: 'textarea', icon: <Type className="h-5 w-5" />, label: 'Long Text' },
+  { type: 'email', icon: <Type className="h-5 w-5" />, label: 'Email' },
+  { type: 'phone', icon: <Type className="h-5 w-5" />, label: 'Phone' },
+  { type: 'url', icon: <LinkIcon className="h-5 w-5" />, label: 'URL' },
+  { type: 'photo', icon: <ImageIcon className="h-5 w-5" />, label: 'Photo Upload' },
+  { type: 'image', icon: <ImageIcon className="h-5 w-5" />, label: 'Image Display' },
+  { type: 'video', icon: <Video className="h-5 w-5" />, label: 'Video' },
+];
+
 export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
   const { toast } = useToast();
   const [uploadingField, setUploadingField] = useState<string | null>(null);
   const [customLinks, setCustomLinks] = useState<Array<{ label: string; url: string }>>([]);
+  const [showToolbar, setShowToolbar] = useState(true);
 
   const { data: existingForm, isLoading: loadingForm } = useQuery<EventForm>({
     queryKey: ["/api/admin/forms", formId],
@@ -180,16 +199,31 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
     form.setValue("customLinks", links.filter((_, i) => i !== index));
   };
 
-  const addCustomField = () => {
+  const addCustomField = (fieldType: 'text' | 'email' | 'phone' | 'textarea' | 'url' | 'photo' = 'text') => {
     const fields = form.getValues("customFields") || [];
     const newField: CustomField = {
       id: `field_${Date.now()}`,
-      type: "text",
+      type: fieldType,
       label: "",
       required: false,
       placeholder: "",
     };
     form.setValue("customFields", [...fields, newField]);
+  };
+
+  const addElementFromToolbar = (elementType: ToolbarElement['type']) => {
+    if (['text', 'email', 'phone', 'textarea', 'url', 'photo'].includes(elementType)) {
+      addCustomField(elementType as any);
+      toast({
+        title: "Field Added",
+        description: `${elementType.charAt(0).toUpperCase() + elementType.slice(1)} field added to form`,
+      });
+    } else {
+      toast({
+        title: "Coming Soon",
+        description: `${elementType} element will be supported soon`,
+      });
+    }
   };
 
   const removeCustomField = (index: number) => {
@@ -222,26 +256,71 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">{formId ? "Edit Form" : "Create New Form"}</h2>
-          <p className="text-muted-foreground">Configure your registration form</p>
-        </div>
-        {formId && existingForm && !existingForm.isPublished && (
+    <div className="flex gap-4">
+      {/* Sidebar Toolbar */}
+      {showToolbar && (
+        <Card className="w-16 flex-shrink-0 sticky top-4 h-fit">
+          <CardContent className="p-2 space-y-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="w-full h-12"
+              onClick={() => setShowToolbar(false)}
+              title="Close toolbar"
+            >
+              <List className="h-5 w-5" />
+            </Button>
+            {toolbarElements.map((element) => (
+              <Button
+                key={element.type}
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="w-full h-12 hover:bg-primary/10"
+                onClick={() => addElementFromToolbar(element.type)}
+                title={element.label}
+              >
+                {element.icon}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Main Form Content */}
+      <div className="flex-1 space-y-6">
+        {!showToolbar && (
           <Button
-            onClick={handlePublish}
-            disabled={publishMutation.isPending}
-            data-testid="button-publish"
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowToolbar(true)}
           >
-            <Globe className="h-4 w-4 mr-2" />
-            Publish Form
+            <Plus className="h-4 w-4 mr-2" />
+            Show Element Toolbar
           </Button>
         )}
-      </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">{formId ? "Edit Form" : "Create New Form"}</h2>
+            <p className="text-muted-foreground">Configure your registration form</p>
+          </div>
+          {formId && existingForm && !existingForm.isPublished && (
+            <Button
+              onClick={handlePublish}
+              disabled={publishMutation.isPending}
+              data-testid="button-publish"
+            >
+              <Globe className="h-4 w-4 mr-2" />
+              Publish Form
+            </Button>
+          )}
+        </div>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
@@ -606,12 +685,15 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
           <Card>
             <CardHeader>
               <CardTitle>Custom Form Fields</CardTitle>
-              <CardDescription>Add additional fields for registrants to fill (photo upload, URLs, etc.)</CardDescription>
+              <CardDescription>Add additional fields for registrants to fill. Use the toolbar on the left to quickly add elements.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {(form.watch("customFields") || []).map((field, index) => (
-                <div key={field.id} className="p-4 border rounded-md space-y-4">
-                  <div className="flex gap-4">
+                <div key={field.id} className="p-4 border-2 border-muted rounded-lg space-y-4 hover:border-primary/50 transition-colors bg-card">
+                  <div className="flex gap-4 items-start">
+                    <div className="flex items-center justify-center pt-8">
+                      <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
+                    </div>
                     <FormField
                       control={form.control}
                       name={`customFields.${index}.type`}
@@ -625,12 +707,12 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="text">Text</SelectItem>
-                              <SelectItem value="email">Email</SelectItem>
-                              <SelectItem value="phone">Phone</SelectItem>
-                              <SelectItem value="textarea">Long Text</SelectItem>
-                              <SelectItem value="url">URL</SelectItem>
-                              <SelectItem value="photo">Photo Upload</SelectItem>
+                              <SelectItem value="text">📝 Text</SelectItem>
+                              <SelectItem value="email">📧 Email</SelectItem>
+                              <SelectItem value="phone">📱 Phone</SelectItem>
+                              <SelectItem value="textarea">📄 Long Text</SelectItem>
+                              <SelectItem value="url">🔗 URL</SelectItem>
+                              <SelectItem value="photo">📷 Photo Upload</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -669,7 +751,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       control={form.control}
                       name={`customFields.${index}.required`}
                       render={({ field }) => (
-                        <FormItem className="flex items-center gap-2 space-y-0">
+                        <FormItem className="flex items-center gap-2 space-y-0 pb-2">
                           <FormControl>
                             <Checkbox
                               checked={field.value}
@@ -687,6 +769,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       size="icon"
                       onClick={() => removeCustomField(index)}
                       data-testid={`button-remove-field-${index}`}
+                      title="Remove field"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -696,7 +779,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={addCustomField}
+                onClick={() => addCustomField()}
                 data-testid="button-add-custom-field"
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -734,6 +817,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
           </div>
         </form>
       </Form>
+      </div>
     </div>
   );
 }
