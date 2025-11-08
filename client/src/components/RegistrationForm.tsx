@@ -394,9 +394,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                 <CardTitle className="text-[#ff6b35] text-lg">REGISTRATION FEE</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-5xl font-bold text-white mb-4">₹99 <span className="text-xl text-gray-400">/ slot</span></div>
+                <div className="text-5xl font-bold text-white mb-4">
+                  ₹{baseFields.teamMembers?.registrationFee || 99} <span className="text-xl text-gray-400">/ slot</span>
+                </div>
                 <p className="text-sm text-gray-400">
-                  You are buying ONE slot. The fee is fixed at ₹99 whether you play Solo, Duo, Trio, or Full Squad.
+                  {baseFields.teamMembers?.registrationFeeDescription || "You are buying ONE slot. The fee is fixed at ₹99 whether you play Solo, Duo, Trio, or Full Squad."}
                 </p>
               </CardContent>
             </Card>
@@ -408,7 +410,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="text-sm text-gray-300">
-                  <span className="text-white font-semibold">1.</span> Pay ₹99 to the UPI ID below.
+                  <span className="text-white font-semibold">1.</span> Pay ₹{baseFields.teamMembers?.registrationFee || 99} to the UPI ID below.
                 </div>
                 <div className="text-sm text-gray-300">
                   <span className="text-white font-semibold">2.</span> Take a clear screenshot of the success screen.
