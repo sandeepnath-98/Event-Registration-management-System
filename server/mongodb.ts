@@ -435,7 +435,6 @@ export class TicketDatabase {
 
   exportToExcel(registrations: Registration[]): Buffer {
     const XLSX = require('xlsx') as typeof import('xlsx');
-    const XLSX_require('xlsx');
 
     const rows = registrations.map((r) => {
       const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
