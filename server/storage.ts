@@ -196,7 +196,7 @@ export class SqliteStorage implements IStorage {
   }
 
   async exportToPDF(registrations: Registration[]): Promise<Buffer> {
-    const PDFDocument = require('pdfkit');
+    const PDFDocument = (await import('pdfkit')).default;
     const doc = new PDFDocument({ margin: 50 });
     const chunks: Buffer[] = [];
 
@@ -257,7 +257,7 @@ export class SqliteStorage implements IStorage {
   }
 
   exportToExcel(registrations: Registration[]): Buffer {
-    const XLSX = require('xlsx');
+    const XLSX = require('xlsx') as typeof import('xlsx');
 
     const rows = registrations.map((r) => {
       const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
