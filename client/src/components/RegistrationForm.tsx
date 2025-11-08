@@ -673,6 +673,30 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           />
                         )}
                       </div>
+
+                      {baseFields.organization?.enabled && (
+                        <FormField
+                          control={form.control}
+                          name="organization"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-300">
+                                {baseFields.organization?.label}
+                                {baseFields.organization?.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder={baseFields.organization?.placeholder || "Enter organization name"}
+                                  {...field}
+                                  className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                  data-testid="input-organization"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-[#ff6b35]" />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                     </div>
 
                     {/* Team Members Section */}
