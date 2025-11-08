@@ -757,17 +757,17 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       <FormControl>
                         <Input
                           type="number"
-                          min="1"
+                          min="0"
                           max="20"
-                          placeholder="Enter max team members (1-20)"
+                          placeholder="Enter max team members (0-20)"
                           {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           value={field.value || 4}
                           data-testid="input-max-team-members"
                         />
                       </FormControl>
                       <FormDescription>
-                        Users will be able to add up to this many team members (default: 4)
+                        Users will be able to add up to this many team members (0 for no team members, default: 4)
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
