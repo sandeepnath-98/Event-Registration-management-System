@@ -285,7 +285,18 @@ export class TicketDatabase {
 
   async createEventForm(data: any) {
     const database = await this.getDb();
+    
+    // Get the next ID by finding the max existing ID
+    const maxIdDoc = await database.collection("event_forms")
+      .find({})
+      .sort({ id: -1 })
+      .limit(1)
+      .toArray();
+    
+    const nextId = maxIdDoc.length > 0 && maxIdDoc[0].id ? maxIdDoc[0].id + 1 : 1;
+    
     const form = {
+      id: nextId,
       title: data.title,
       subtitle: data.subtitle || null,
       heroImageUrl: data.heroImageUrl || null,
@@ -304,16 +315,7 @@ export class TicketDatabase {
     };
 
     const result = await database.collection("event_forms").insertOne(form);
-    const insertedId = result.insertedId;
-
-    // Assign auto-incrementing id
-    const count = await database.collection("event_forms").countDocuments();
-    await database.collection("event_forms").updateOne(
-      { _id: insertedId },
-      { $set: { id: count } }
-    );
-
-    return await database.collection("event_forms").findOne({ _id: insertedId });
+    return await database.collection("event_forms").findOne({ _id: result.insertedId });
   }
 
   async getEventForm(id: number) {
@@ -410,6 +412,7 @@ export async function seedDefaultForm() {
 
     // Create default tournament form
     const defaultForm = {
+      id: 1,
       title: "University of Allahabad - Free Fire Tournament",
       subtitle: "Register now to receive your secure QR-based entry pass",
       description: "Join the ultimate Free Fire tournament! ₹99 registration fee per slot.",
