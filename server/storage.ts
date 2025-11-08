@@ -64,7 +64,43 @@ export class SqliteStorage implements IStorage {
   }
 
   async verifyAndScan(ticketId: string): Promise<{ valid: boolean; registration?: Registration; message: string }> {
-    return ticketDb.verifyAndScan(ticketId);
+    const registration = await ticketDb.getRegistration(ticketId);
+
+    if (!registration) {
+      return { valid: false, message: "Ticket not found." };
+    }
+
+    if (registration.status === "exhausted") {
+      return { valid: false, message: "This ticket has reached its maximum scan limit." };
+    }
+
+    if (registration.scans >= registration.maxScans) {
+      await ticketDb.updateRegistration(ticketId, { status: "exhausted" });
+      return { valid: false, message: "This ticket has reached its maximum scan limit." };
+    }
+
+    // Update scan count and status
+    const newScans = registration.scans + 1;
+    let newStatus: "active" | "checked-in" | "exhausted";
+
+    if (newScans >= registration.maxScans) {
+      newStatus = "exhausted";
+    } else if (newScans === 1) {
+      newStatus = "checked-in";
+    } else {
+      newStatus = "active";
+    }
+
+    await ticketDb.updateRegistration(ticketId, { 
+      scans: newScans,
+      status: newStatus 
+    });
+
+    return { 
+      valid: true, 
+      registration: { ...registration, scans: newScans, status: newStatus }, 
+      message: "Ticket verified and scanned successfully." 
+    };
   }
 
   async getStats() {
