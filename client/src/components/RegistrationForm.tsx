@@ -327,7 +327,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     },
   });
 
-  const handleSubmit = (data: any) => {
+  const onSubmit = (data: any) => {
     console.log("🚀 Attempting to submit form...");
     console.log("Form validation passed, data:", data);
     mutation.mutate(data);
@@ -547,7 +547,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     {/* Squad Leader Section */}
                     <div className="space-y-4">
                       <h3 className="text-[#ff6b35] font-semibold text-lg">SQUAD LEADER (YOU)</h3>
