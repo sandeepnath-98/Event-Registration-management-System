@@ -1,0 +1,38 @@
+> rest-express@1.0.0 dev
+> NODE_ENV=development tsx server/index.ts
+
+📧 Email Service Configuration:
+- Service: SMTP (Nodemailer)
+- Host: smtp.sendgrid.net
+- Port: 587
+- Secure: false
+- Auth: ❌ NOT SET
+- From: Event Registration <eventmanagerlpu@gmail.com>
+🔄 Connecting to MongoDB...
+📍 URI: mongodb+srv://sandeepnath801051_db_user:****@cluster0.vm6uex5.mongodb.net/?appName=Cluster0
+📦 Database: event_registration
+✅ Connected to MongoDB successfully!
+5:03:00 PM [express] serving on port 5000
+
+A PostCSS plugin did not pass the `from` option to `postcss.parse`. This may cause imported assets to be incorrectly transformed. If you've recently added a PostCSS plugin that raised this warning, please contact the package author to fix the issue.
+5:03:04 PM [express] GET /api/admin/check 304 in 1ms :: {"isAdmin":false}
+📋 Fetching published form...
+📋 Published form result: Found form ID 1
+5:03:04 PM [express] GET /api/published-form 304 in 7ms :: {"_id":"690f36880090d2abeb84bba7","id":1,…
+📋 Fetching published form...
+5:03:10 PM [express] GET /api/admin/check 200 in 2ms :: {"isAdmin":false}
+📋 Published form result: Found form ID 1
+5:03:10 PM [express] GET /api/published-form 200 in 8ms :: {"_id":"690f36880090d2abeb84bba7","id":1,…
+5:03:21 PM [express] GET /api/admin/check 304 in 1ms :: {"isAdmin":false}
+5:03:35 PM [express] POST /api/admin/login 401 in 2ms :: {"error":"Invalid password"}
+5:03:45 PM [express] POST /api/admin/login 200 in 2ms :: {"success":true}
+5:03:47 PM [express] GET /api/admin/forms 304 in 8ms :: [{"_id":"690f36880090d2abeb84bba7","id":1,"t…
+5:03:49 PM [express] GET /api/admin/forms/1/registrations 200 in 13ms :: {"registrations":[{"_id":"6…
+5:03:49 PM [express] GET /api/admin/forms/1/stats 200 in 70ms :: {"totalRegistrations":4,"qrCodesGen…
+⚠️ Email not configured or no email address
+isEmailConfigured: false
+registration.email: sandeepnath2063@gmail.com
+5:03:54 PM [express] POST /api/admin/generate-qr/REG2486 200 in 51ms :: {"success":true,"registratio…
+5:03:54 PM [express] GET /api/admin/forms/1/stats 200 in 8ms :: {"totalRegistrations":4,"qrCodesGene…
+5:03:54 PM [express] GET /api/admin/forms/1/registrations 200 in 11ms :: {"registrations":[{"_id":"6…
+^C
