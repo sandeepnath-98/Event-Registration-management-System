@@ -12,6 +12,8 @@ import { insertRegistrationSchema, adminLoginSchema, eventFormSchema } from "@sh
 import { stringify } from "csv-stringify/sync";
 import PDFDocument from "pdfkit";
 import { sendQRCodeEmail, isEmailConfigured, testEmailConnection } from "./email";
+// Import the database connection (assuming it's exported from './storage')
+import { db } from "./storage";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || "eventadmin@1111";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
@@ -79,24 +81,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Public Routes
-  
+
   // POST /api/register - Create new registration
   app.post("/api/register", express.json(), async (req, res) => {
     try {
       console.log("📝 Received registration request:", req.body);
       const validated = insertRegistrationSchema.parse(req.body);
-      
+
       // Calculate actual group size: 1 (leader) + number of team members
       const teamMembersCount = validated.teamMembers?.length || 0;
       const actualGroupSize = 1 + teamMembersCount;
-      
+
       console.log(`✅ Validation passed. Group size: 1 leader + ${teamMembersCount} members = ${actualGroupSize}`);
-      
+
       // Get the published form to associate with this registration
       const publishedForm = await storage.getPublishedForm();
       const formId = publishedForm?.id || null;
       console.log("📋 Form ID:", formId);
-      
+
       const registration = await storage.createRegistration({
         ...validated,
         groupSize: actualGroupSize,
@@ -110,42 +112,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/verify - Verify QR code and record scan
+  // Verify QR code endpoint
   app.get("/api/verify", async (req, res) => {
     try {
       const ticketId = req.query.t as string;
 
       if (!ticketId) {
-        return res.status(400).json({ error: "Ticket ID is required" });
+        return res.status(400).json({
+          valid: false,
+          message: "No ticket ID provided",
+        });
       }
 
-      const result = await storage.verifyAndScan(ticketId);
+      const registration = await db.collection("registrations").findOne({
+        id: ticketId,
+      });
 
-      // Calculate actual group size including leader
-      const actualGroupSize = result.registration ? 
-        1 + (result.registration.teamMembers?.length || 0) : 1;
+      if (!registration) {
+        return res.status(404).json({
+          valid: false,
+          message: "Registration not found",
+        });
+      }
 
-      const responseData = {
-        valid: result.valid,
-        message: result.message,
-        registration: result.registration ? {
-          id: result.registration.id,
-          name: result.registration.name,
-          email: result.registration.email,
-          phone: result.registration.phone,
-          organization: result.registration.organization,
-          groupSize: actualGroupSize,
-          teamMembers: result.registration.teamMembers || [],
-          customFieldData: result.registration.customFieldData || {},
-          scansUsed: result.registration.scans,
-          maxScans: result.registration.maxScans,
-        } : undefined,
-      };
-      
-      console.log("📊 Verify response data:", JSON.stringify(responseData, null, 2));
-      res.json(responseData);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message || "Verification failed" });
+      // Parse team members from customFieldData
+      const customFieldData = registration.customFieldData || {};
+      const teamMembers: any[] = [];
+
+      // Extract team member data from custom fields
+      Object.keys(customFieldData).forEach((key) => {
+        if (key.startsWith('member_') && key.includes('_name_')) {
+          const memberIndex = key.match(/member_(\d+)_name/)?.[1];
+          if (memberIndex) {
+            const memberData: any = {
+              name: customFieldData[key],
+            };
+
+            // Look for phone number
+            const phoneKey = Object.keys(customFieldData).find(k => 
+              k.includes(`member_${memberIndex}_phone`) || k.includes(`member_${memberIndex}_contact`)
+            );
+            if (phoneKey) {
+              memberData.phone = customFieldData[phoneKey];
+            }
+
+            // Look for UID
+            const uidKey = Object.keys(customFieldData).find(k => 
+              k.includes(`member_${memberIndex}_`) && 
+              !k.includes('_name') && 
+              !k.includes('_phone') && 
+              !k.includes('_contact')
+            );
+            if (uidKey) {
+              memberData.uid = customFieldData[uidKey];
+            }
+
+            teamMembers.push(memberData);
+          }
+        }
+      });
+
+      console.log("📋 Team members extracted:", teamMembers);
+
+      // Check if max scans reached
+      const currentScans = registration.scansUsed || 0;
+      const maxScans = registration.maxScans || 1;
+
+      if (currentScans >= maxScans) {
+        return res.json({
+          valid: false,
+          message: `Maximum scans (${maxScans}) already used`,
+          registration: {
+            id: registration.id,
+            name: registration.name,
+            email: registration.email,
+            phone: registration.phone,
+            organization: registration.organization,
+            groupSize: registration.groupSize,
+            teamMembers: teamMembers,
+            customFieldData: customFieldData,
+            scansUsed: currentScans,
+            maxScans: maxScans,
+          },
+        });
+      }
+
+      // Increment scan count
+      await db.collection("registrations").updateOne(
+        { id: ticketId },
+        {
+          $inc: { scansUsed: 1 },
+          $set: { lastScannedAt: new Date() },
+        }
+      );
+
+      // Record scan in history
+      await db.collection("scan_history").insertOne({
+        ticketId,
+        registrationName: registration.name,
+        organization: registration.organization || "",
+        groupSize: registration.groupSize || 1,
+        teamMembers: teamMembers,
+        scannedAt: new Date(),
+        scansUsed: currentScans + 1,
+        maxScans: maxScans,
+      });
+
+      res.json({
+        valid: true,
+        message: `Valid! ${currentScans + 1}/${maxScans} scans used`,
+        registration: {
+          id: registration.id,
+          name: registration.name,
+          email: registration.email,
+          phone: registration.phone,
+          organization: registration.organization,
+          groupSize: registration.groupSize,
+          teamMembers: teamMembers,
+          customFieldData: customFieldData,
+          scansUsed: currentScans + 1,
+          maxScans: maxScans,
+        },
+      });
+    } catch (error) {
+      console.error("Error verifying ticket:", error);
+      res.status(500).json({
+        valid: false,
+        message: "Server error during verification",
+      });
     }
   });
 
@@ -219,10 +313,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : undefined;
-      
+
       const registrations = await storage.getAllRegistrations(limit, offset);
       const total = await storage.getRegistrationsCount();
-      
+
       res.json({
         registrations,
         total,
@@ -267,7 +361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send QR code via email
       let emailSent = false;
       let emailError = null;
-      
+
       if (isEmailConfigured() && registration.email) {
         console.log("🔄 Email is configured, attempting to send...");
         try {
@@ -337,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const success = await storage.deleteRegistration(id);
-      
+
       if (success) {
         res.json({ success: true, message: "Registration deleted successfully" });
       } else {
@@ -353,7 +447,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const success = await storage.revokeQRCode(id);
-      
+
       if (success) {
         const updatedReg = await storage.getRegistration(id);
         res.json({ success: true, registration: updatedReg, message: "QR code revoked successfully" });
@@ -369,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/admin/registrations/:id", requireAdmin, express.json(), async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Validate the update payload
       const updateSchema = z.object({
         name: z.string().optional(),
@@ -387,7 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = updateSchema.parse(req.body);
       const success = await storage.updateRegistration(id, validatedData);
-      
+
       if (success) {
         const updatedReg = await storage.getRegistration(id);
         res.json({ success: true, registration: updatedReg, message: "Registration updated successfully" });
@@ -408,10 +502,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const formId = parseInt(req.params.formId);
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : undefined;
-      
+
       const registrations = await storage.getRegistrationsByFormId(formId, limit, offset);
       const total = await storage.getRegistrationsByFormIdCount(formId);
-      
+
       res.json({
         registrations,
         total,
@@ -600,7 +694,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validated = eventFormSchema.parse(req.body);
       console.log("✅ Validation passed for form update");
       const success = await storage.updateEventForm(id, validated);
-      
+
       if (success) {
         const updated = await storage.getEventForm(id);
         console.log(`✅ Form ${id} updated successfully`);
@@ -627,7 +721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.publishEventForm(id);
-      
+
       if (success) {
         const form = await storage.getEventForm(id);
         res.json({ success: true, form });
@@ -644,7 +738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.unpublishEventForm(id);
-      
+
       if (success) {
         const form = await storage.getEventForm(id);
         res.json({ success: true, form });
@@ -661,7 +755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const success = await storage.deleteEventForm(id);
-      
+
       if (success) {
         res.json({ success: true });
       } else {
