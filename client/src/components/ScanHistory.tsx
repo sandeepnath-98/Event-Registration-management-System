@@ -12,9 +12,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+interface TeamMember {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 interface ScanHistoryItem {
   id: string;
   ticketId: string;
+  registrationId: string;
+  registrationName: string;
+  email: string;
+  organization: string;
+  groupSize: number;
+  teamMembers?: TeamMember[];
+  customFieldData?: Record<string, string>;
+  scansUsed: number;
+  maxScans: number;
   scannedAt: string;
   valid: boolean;
 }
@@ -80,6 +95,11 @@ export default function ScanHistory() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Ticket ID</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Organization</TableHead>
+                  <TableHead>Group Size</TableHead>
+                  <TableHead>Team Members</TableHead>
+                  <TableHead>Scans</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Scanned At</TableHead>
                 </TableRow>
@@ -87,7 +107,33 @@ export default function ScanHistory() {
               <TableBody>
                 {history.map((scan) => (
                   <TableRow key={scan.id}>
-                    <TableCell className="font-mono">{scan.ticketId}</TableCell>
+                    <TableCell className="font-mono text-xs">{scan.ticketId.slice(0, 8)}...</TableCell>
+                    <TableCell className="font-medium">{scan.registrationName}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{scan.organization || "N/A"}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline">{scan.groupSize}</Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {scan.teamMembers && scan.teamMembers.length > 0 ? (
+                        <div className="space-y-1">
+                          {scan.teamMembers.slice(0, 2).map((member, idx) => (
+                            <div key={idx} className="text-xs text-muted-foreground">
+                              {member.name}
+                            </div>
+                          ))}
+                          {scan.teamMembers.length > 2 && (
+                            <div className="text-xs text-muted-foreground">
+                              +{scan.teamMembers.length - 2} more
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center text-sm">
+                      {scan.scansUsed}/{scan.maxScans}
+                    </TableCell>
                     <TableCell>
                       {scan.valid ? (
                         <Badge variant="default" className="flex items-center gap-1 w-fit">
@@ -101,7 +147,7 @@ export default function ScanHistory() {
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell>{formatDateTime(scan.scannedAt)}</TableCell>
+                    <TableCell className="text-sm">{formatDateTime(scan.scannedAt)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

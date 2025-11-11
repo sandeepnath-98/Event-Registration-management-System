@@ -175,9 +175,19 @@ export class TicketDatabase {
     registration.scans = newScans;
     registration.status = newStatus;
 
+    // Save enriched scan history with all registration details
     await database.collection("scan_history").insertOne({
       id: nanoid(),
       ticketId,
+      registrationId: registration.id,
+      registrationName: registration.name || "N/A",
+      email: registration.email || "N/A",
+      organization: registration.organization || "N/A",
+      groupSize: registration.groupSize || 1,
+      teamMembers: registration.teamMembers || [],
+      customFieldData: registration.customFieldData || {},
+      scansUsed: newScans,
+      maxScans: registration.maxScans,
       scannedAt: new Date().toISOString(),
       valid: true,
     });

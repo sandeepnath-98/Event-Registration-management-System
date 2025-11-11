@@ -60,6 +60,35 @@ export async function sendQRCodeEmail(
     const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, "");
     const qrCodeBuffer = Buffer.from(base64Data, "base64");
 
+    // Build team members list HTML
+    const teamMembersHtml = registration.teamMembers && registration.teamMembers.length > 0 
+      ? `
+        <div class="info-box">
+          <strong>Team Members (${registration.teamMembers.length}):</strong><br>
+          ${registration.teamMembers.map((member, index) => `
+            <div style="margin-top: 10px; padding-left: 15px;">
+              <strong>Member ${index + 1}:</strong><br>
+              ${member.name ? `Name: ${member.name}<br>` : ''}
+              ${member.email ? `Email: ${member.email}<br>` : ''}
+              ${member.phone ? `Phone: ${member.phone}<br>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `
+      : '';
+
+    // Build custom fields HTML
+    const customFieldsHtml = registration.customFieldData && Object.keys(registration.customFieldData).length > 0
+      ? `
+        <div class="info-box">
+          <strong>Additional Information:</strong><br>
+          ${Object.entries(registration.customFieldData).map(([key, value]) => `
+            ${key}: ${value}<br>
+          `).join('')}
+        </div>
+      `
+      : '';
+
     const mailOptions = {
       from: `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`,
       to: `${registration.name} <${registration.email}>`,
@@ -142,12 +171,17 @@ export async function sendQRCodeEmail(
               
               <div class="info-box">
                 <strong>Registration Details:</strong><br>
+                Registration ID: ${registration.id}<br>
                 Name: ${registration.name}<br>
                 Email: ${registration.email}<br>
-                Organization: ${registration.organization}<br>
-                Group Size: ${registration.groupSize}<br>
-                Registration ID: ${registration.id}
+                ${registration.phone ? `Phone: ${registration.phone}<br>` : ''}
+                ${registration.organization ? `Organization: ${registration.organization}<br>` : ''}
+                Group Size: ${registration.groupSize}
               </div>
+              
+              ${teamMembersHtml}
+              
+              ${customFieldsHtml}
               
               <div class="qr-code">
                 <h3>Your QR Code</h3>
@@ -165,6 +199,7 @@ export async function sendQRCodeEmail(
                 <strong>Important:</strong><br>
                 • Please save this email or take a screenshot of the QR code<br>
                 • Show this QR code at the event entrance<br>
+                • This QR code is valid for your entire team (${registration.groupSize} ${registration.groupSize === 1 ? 'person' : 'people'})<br>
                 • Your QR code can be scanned up to ${registration.maxScans} time(s) for entry<br>
                 • Keep your registration ID (${registration.id}) handy
               </div>

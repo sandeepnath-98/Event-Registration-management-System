@@ -121,8 +121,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         registration: result.registration ? {
           id: result.registration.id,
           name: result.registration.name,
+          email: result.registration.email,
+          phone: result.registration.phone,
           organization: result.registration.organization,
           groupSize: result.registration.groupSize,
+          teamMembers: result.registration.teamMembers || [],
+          customFieldData: result.registration.customFieldData || {},
           scansUsed: result.registration.scans,
           maxScans: result.registration.maxScans,
         } : undefined,

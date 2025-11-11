@@ -15,7 +15,10 @@ export const insertRegistrationSchema = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
   organization: z.string().optional(),
-  groupSize: z.number().min(1).max(4).optional(),
+  groupSize: z.union([z.number(), z.string()]).transform((val) => {
+    const num = typeof val === 'string' ? parseInt(val, 10) : val;
+    return isNaN(num) ? 1 : Math.max(1, Math.min(20, num));
+  }).optional(),
   formId: z.number().nullable().optional(),
   customFieldData: z.record(z.string()).optional(),
   teamMembers: z.array(teamMemberSchema).optional(),
@@ -41,13 +44,38 @@ export interface Registration {
   teamMembers?: TeamMember[];
 }
 
-// Scan history schema
+// Scan history schema - denormalized for complete record keeping
 export interface ScanHistory {
   id: string;
   ticketId: string;
+  registrationId: string;
+  registrationName: string;
+  email: string;
+  organization: string;
+  groupSize: number;
+  teamMembers?: TeamMember[];
+  customFieldData?: Record<string, string>;
+  scansUsed: number;
+  maxScans: number;
   scannedAt: string;
   valid: boolean;
 }
+
+export const insertScanHistorySchema = z.object({
+  ticketId: z.string(),
+  registrationId: z.string(),
+  registrationName: z.string(),
+  email: z.string(),
+  organization: z.string(),
+  groupSize: z.number(),
+  teamMembers: z.array(teamMemberSchema).optional(),
+  customFieldData: z.record(z.string()).optional(),
+  scansUsed: z.number(),
+  maxScans: z.number(),
+  valid: z.boolean(),
+});
+
+export type InsertScanHistory = z.infer<typeof insertScanHistorySchema>;
 
 // Admin login schema
 export const adminLoginSchema = z.object({

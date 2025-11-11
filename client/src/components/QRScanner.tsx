@@ -20,11 +20,21 @@ import {
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 
+interface TeamMember {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
 interface ScanResult {
   ticketId: string;
   name: string;
+  email?: string;
+  phone?: string;
   organization: string;
   groupSize: number;
+  teamMembers?: TeamMember[];
+  customFieldData?: Record<string, string>;
   scansUsed: number;
   maxScans: number;
   valid: boolean;
@@ -238,16 +248,16 @@ export default function QRScanner({ onScan }: QRScannerProps) {
 
                         <div className="grid grid-cols-2 gap-4 pt-2">
                           <div>
+                            <p className="text-xs text-muted-foreground">Registration ID</p>
+                            <p className="font-mono text-sm">{lastResult.ticketId.slice(0, 12)}...</p>
+                          </div>
+                          <div>
                             <p className="text-xs text-muted-foreground">Name</p>
                             <p className="font-medium">{lastResult.name}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-muted-foreground">Ticket ID</p>
-                            <p className="font-mono text-sm">{lastResult.ticketId}</p>
-                          </div>
-                          <div>
                             <p className="text-xs text-muted-foreground">Organization</p>
-                            <p className="font-medium">{lastResult.organization}</p>
+                            <p className="font-medium">{lastResult.organization || "N/A"}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Entries Used</p>
@@ -256,6 +266,25 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                             </p>
                           </div>
                         </div>
+
+                        {lastResult.teamMembers && lastResult.teamMembers.length > 0 && (
+                          <div className="pt-3 border-t">
+                            <p className="text-sm font-semibold mb-2">Team Members ({lastResult.teamMembers.length}):</p>
+                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                              {lastResult.teamMembers.map((member, idx) => (
+                                <div key={idx} className="text-sm p-2 bg-muted rounded">
+                                  <p className="font-medium">{idx + 1}. {member.name || "Unnamed"}</p>
+                                  {member.email && (
+                                    <p className="text-xs text-muted-foreground">{member.email}</p>
+                                  )}
+                                  {member.phone && (
+                                    <p className="text-xs text-muted-foreground">{member.phone}</p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="flex items-center gap-2 pt-2">
                           <Badge variant="outline">
