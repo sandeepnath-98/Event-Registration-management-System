@@ -177,7 +177,7 @@ export async function sendQRCodeEmail(
                 Email: ${registration.email}<br>
                 ${registration.phone ? `Phone: ${registration.phone}<br>` : ''}
                 ${registration.organization ? `Organization: ${registration.organization}<br>` : ''}
-                Total Group Size: ${registration.groupSize} ${registration.groupSize === 1 ? 'person' : 'people'} (1 Team Leader${registration.teamMembers && registration.teamMembers.length > 0 ? ` + ${registration.teamMembers.length} Team ${registration.teamMembers.length === 1 ? 'Member' : 'Members'}` : ''})
+                Total Group Size: ${registration.groupSize} ${registration.groupSize === 1 ? '' : 'people'} (1 Team Leader${registration.teamMembers && registration.teamMembers.length > 0 ? ` + ${registration.teamMembers.length} Team ${registration.teamMembers.length === 1 ? 'Member' : 'Members'}` : ''})
               </div>
               
               ${teamMembersHtml}
@@ -200,7 +200,7 @@ export async function sendQRCodeEmail(
                 <strong>Important:</strong><br>
                 • Please save this email or take a screenshot of the QR code<br>
                 • Show this QR code at the event entrance<br>
-                • This QR code is valid for your entire team (${registration.groupSize} ${registration.groupSize === 1 ? 'person' : 'people'})<br>
+                • This QR code is valid for your entire team (${registration.groupSize} ${registration.groupSize === 1 ? '' : 'people'})<br>
                 • Your QR code can be scanned up to ${registration.maxScans} time(s) for entry<br>
                 • Keep your registration ID (${registration.id}) handy
               </div>
