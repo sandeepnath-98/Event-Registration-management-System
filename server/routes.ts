@@ -125,7 +125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const actualGroupSize = result.registration ? 
         1 + (result.registration.teamMembers?.length || 0) : 1;
 
-      res.json({
+      const responseData = {
         valid: result.valid,
         message: result.message,
         registration: result.registration ? {
@@ -140,7 +140,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           scansUsed: result.registration.scans,
           maxScans: result.registration.maxScans,
         } : undefined,
-      });
+      };
+      
+      console.log("📊 Verify response data:", JSON.stringify(responseData, null, 2));
+      res.json(responseData);
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Verification failed" });
     }

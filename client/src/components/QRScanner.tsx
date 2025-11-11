@@ -130,6 +130,9 @@ export default function QRScanner({ onScan }: QRScannerProps) {
 
       try {
         const result = await Promise.resolve(onScan(ticketId));
+        console.log("🔍 QR Scan result received:", result);
+        console.log("👥 Team members in result:", result?.teamMembers);
+        
         if (result) {
           // Use the result as-is from the server, which already has correct groupSize and teamMembers
           if (!result.valid && result.scansUsed > 0) {
