@@ -1,14 +1,14 @@
 import nodemailer from "nodemailer";
 import type { Registration } from "@shared/schema";
 
-// SMTP Configuration for Render or any platform
-// Defaults configured for SendGrid (recommended for production)
-const SMTP_HOST = process.env.SMTP_HOST || "smtp.sendgrid.net";
+// SMTP Configuration - Using Gmail as default
+// For production, use a dedicated SMTP service like SendGrid
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587");
 const SMTP_SECURE = process.env.SMTP_SECURE === "true"; // true for 465, false for other ports
-const SMTP_USER = process.env.SMTP_USER || "";
-const SMTP_PASS = process.env.SMTP_PASS || "";
-const EMAIL_FROM = process.env.EMAIL_FROM || "noreply@event.com";
+const SMTP_USER = process.env.SMTP_USER || ""; // Your Gmail address
+const SMTP_PASS = process.env.SMTP_PASS || ""; // Your Gmail App Password
+const EMAIL_FROM = process.env.EMAIL_FROM || "eventmanagerlpu@gmail.com";
 const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || "Event Registration";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
 
