@@ -131,19 +131,13 @@ export default function QRScanner({ onScan }: QRScannerProps) {
       try {
         const result = await Promise.resolve(onScan(ticketId));
         if (result) {
-          // Adjust group size calculation: 1 for leader + number of team members
-          const totalGroupSize = 1 + (result.teamMembers?.length || 0);
-          const updatedResult = {
-            ...result,
-            groupSize: totalGroupSize,
-          };
-
-          if (!updatedResult.valid && updatedResult.scansUsed > 0) {
+          // Use the result as-is from the server, which already has correct groupSize and teamMembers
+          if (!result.valid && result.scansUsed > 0) {
             setShowAlreadyScannedDialog(true);
           } else {
-            setLastResult(updatedResult);
+            setLastResult(result);
           }
-          setScanHistory((prev) => [updatedResult, ...prev].slice(0, 10));
+          setScanHistory((prev) => [result, ...prev].slice(0, 10));
         }
       } finally {
         // Reset scanning state after 3 seconds to allow scanning different QR codes
