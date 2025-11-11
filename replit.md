@@ -63,9 +63,14 @@ Preferred communication style: Simple, everyday language.
 
 **Schema Design**:
 - `registrations` collection: Stores attendee information, QR status, scan counts, and entry limits
-  - Tracks: id, name, email, phone, organization, groupSize, scans, maxScans, hasQR, qrCodeData, status, formId
+  - Tracks: id, name, email, phone, organization, groupSize, teamMembers, customFieldData, scans, maxScans, hasQR, qrCodeData, status, formId
+  - `groupSize` is automatically calculated as 1 (primary registrant) + number of team members
+  - `maxScans` defaults to `groupSize` value
   - Indexed on: email, status, formId fields
-- `scan_history` collection: Audit log of all QR code scans with ticket ID references
+- `scan_history` collection: Denormalized audit log of all QR code scans
+  - Stores complete registration snapshot including: registrationId, registrationName, email, organization, groupSize, teamMembers, customFieldData, scansUsed, maxScans
+  - Preserves historical context even if registrations are later modified
+  - Each scan entry includes: ticketId, valid status, scannedAt timestamp
 - `event_forms` collection: Customizable event form configurations with branding options
   - Indexed on: isPublished, id fields
 
@@ -103,9 +108,11 @@ Preferred communication style: Simple, everyday language.
 6. Returns validation result with registration details
 
 **Multi-Entry Tracking**:
-- Each registration has configurable maxScans limit
+- Each registration has `maxScans` limit that defaults to `groupSize`
 - Status transitions: pending → active → exhausted
-- Scanner displays remaining entries and group size
+- Scanner displays remaining entries, group size, and all team member names
+- QR verification returns complete team roster with contact details
+- Scan history preserves full registration context at time of scan
 
 ### External Dependencies
 
@@ -119,6 +126,9 @@ Preferred communication style: Simple, everyday language.
 
 **External Services**:
 - **SMTP Email**: Standard SMTP email delivery using Nodemailer for sending QR codes to registered attendees (works with Gmail, SendGrid, Mailgun, or any SMTP provider)
+  - Email template includes complete registration details: primary registrant info, all team members with contact details, custom field data
+  - QR code embedded inline and attached as downloadable PNG
+  - Group size and scan limits clearly communicated
 - Google Fonts CDN for Inter and JetBrains Mono fonts
 - No cloud storage - files stored locally in `attached_assets/uploads/`
 

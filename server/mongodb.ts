@@ -55,7 +55,9 @@ export class TicketDatabase {
   async createRegistration(data: InsertRegistration): Promise<Registration> {
     const database = await this.getDb();
     const id = this.generateTicketId();
-    const groupSize = data.groupSize || 1;
+    // Calculate groupSize: 1 (primary registrant) + number of team members
+    const teamMemberCount = data.teamMembers ? data.teamMembers.length : 0;
+    const groupSize = 1 + teamMemberCount;
     const maxScans = groupSize * 1;
 
     const registration = {
